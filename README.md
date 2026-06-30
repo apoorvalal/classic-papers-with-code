@@ -12,7 +12,8 @@ Published site: <https://lalten.org/pages/stat-ideas/>
 - `papers/*.qmd`: one Quarto page per paper.
 - `_quarto.yml`: Quarto website configuration.
 - `styles.css`: local styling.
-- `requirements.txt`: Python packages used by the executable examples.
+- `pyproject.toml`: Python packages used by the executable examples.
+- `uv.lock`: locked Python dependency resolution.
 
 Generated output lives in `_site/` after rendering and is intentionally ignored by git.
 
@@ -24,26 +25,28 @@ Install Quarto first:
 brew install quarto
 ```
 
-Create a local Python environment:
+Install the Python dependencies from `pyproject.toml` / `uv.lock`:
 
 ```sh
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-python -m ipykernel install --user --name classic-papers-with-code --display-name "Python (classic-papers-with-code)"
+uv sync
 ```
 
 Render the site:
 
 ```sh
-quarto render
+uv run quarto render
 ```
 
 Preview locally:
 
 ```sh
-quarto preview
+uv run quarto preview
+```
+
+Add or update Python dependencies with `uv add`, for example:
+
+```sh
+uv add scipy
 ```
 
 ## Deploy To Lalten
@@ -51,7 +54,7 @@ quarto preview
 Render first, then sync the generated site directory to the lalten static-pages tree:
 
 ```sh
-quarto render
+uv run quarto render
 rsync -az --delete _site/ hetz:/root/lalten/pages/stat-ideas/
 ssh hetz 'chmod -R a+rX /root/lalten/pages/stat-ideas'
 curl -I https://lalten.org/pages/stat-ideas/

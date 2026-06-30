@@ -1,6 +1,0 @@
-ipykernel
-jupyter
-matplotlib
-numpy
-scipy
-sympy

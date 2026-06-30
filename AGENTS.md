@@ -6,25 +6,25 @@ This repo contains the Quarto source for `classic-papers-with-code`, a small exe
 
 - Source pages are `index.qmd` and `papers/*.qmd`.
 - Site config is `_quarto.yml`; styling is `styles.css`.
-- Python demo dependencies live in `requirements.txt`.
+- Python demo dependencies live in `pyproject.toml` and `uv.lock`.
 - Generated output goes in `_site/` and should not be committed.
 
 ## Build
 
-Use a local virtualenv:
+Use uv for Python dependencies and commands:
 
 ```sh
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
-quarto render
+uv sync
+uv run quarto render
 ```
 
 Preview with:
 
 ```sh
-quarto preview
+uv run quarto preview
 ```
+
+Add or update Python dependencies with `uv add`.
 
 ## Editing Guidance
 
@@ -43,6 +43,7 @@ If you are Apoorva's agent and have write credentials, the public site currently
 Deploy after a clean render with:
 
 ```sh
+uv run quarto render
 rsync -az --delete _site/ hetz:/root/lalten/pages/stat-ideas/
 ssh hetz 'chmod -R a+rX /root/lalten/pages/stat-ideas'
 curl -I https://lalten.org/pages/stat-ideas/
