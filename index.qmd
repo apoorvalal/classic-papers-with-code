@@ -1,0 +1,25 @@
+---
+title: "Statistical Ideas in Code"
+date: today
+---
+
+This site is a compact companion to the STAT 319 journal-club collection. Each page distills the paper's core contribution, writes the central mathematical object, implements a minimal demo using NumPy/SciPy/SymPy/Matplotlib, and links to common production implementations.
+
+The demos are intentionally small. They are meant to make the mechanism visible, not to replace mature libraries.
+
+| Paper | Core idea | Page |
+|---|---|---|
+| Laird (1982), _Random-Effects Models for Longitudinal Data_ | Model repeated outcomes with subject-level random variation. | [Random effects](papers/laird1982.qmd) |
+| Benjamini and Hochberg (1995), _Controlling the False Discovery Rate_ | Control the expected share of false discoveries among discoveries. | [FDR](papers/benjamini1995.qmd) |
+| Breiman (2001), _Statistical Modeling: The Two Cultures_ | Contrast explanatory stochastic models with predictive algorithmic models. | [Two cultures](papers/breiman2001.qmd) |
+| Efron (1979), _Bootstrap Methods: Another Look at the Jackknife_ | Approximate sampling distributions by resampling the empirical distribution. | [Bootstrap](papers/efron1979.qmd) |
+| Dempster, Laird, and Rubin (1977), _Maximum Likelihood from Incomplete Data via the EM Algorithm_ | Optimize likelihoods with latent or missing data by alternating E and M steps. | [EM](papers/dempster1977.qmd) |
+| Baum and Welch (1970), _A Maximization Technique..._ | Fit hidden Markov models with forward-backward EM. | [Baum-Welch](papers/baumwelch.qmd) |
+| Gelfand and Smith (1990), _Sampling-Based Approaches to Calculating Marginal Densities_ | Estimate posterior marginals by simulation rather than closed-form integration. | [MCMC](papers/gelfand1990.qmd) |
+| Cox (1972), _Regression Models and Life-Tables_ | Estimate hazard ratios with a partial likelihood that leaves the baseline hazard unspecified. | [Cox model](papers/cox1972.qmd) |
+| Rosenbaum and Rubin (1983), _The Central Role of the Propensity Score_ | Reduce treatment-assignment confounding to a scalar balancing score. | [Propensity scores](papers/rosenbaum1983.qmd) |
+| Hastie and Tibshirani (1986), _Generalized Additive Models_ | Replace a linear predictor with a sum of smooth functions. | [GAM](papers/hastie1986.qmd) |
+| Shafer and Vovk (2008), _A Tutorial on Conformal Prediction_ | Wrap predictions with finite-sample-valid uncertainty sets under exchangeability. | [Conformal prediction](papers/vovk2008.qmd) |
+| Friedman (1999), _Greedy Function Approximation_ | Build additive models by functional gradient descent. | [Gradient boosting](papers/friedman1999.qmd) |
+| Robins (1999), _Association, Causation, and Marginal Structural Models_ | Use inverse-probability weighting for time-varying treatments and confounders. | [MSMs](papers/robins1999.qmd) |
+| Tibshirani (1996), _Regression Shrinkage and Selection via the Lasso_ | Use an $\ell_1$ penalty for simultaneous shrinkage and variable selection. | [Lasso](papers/tibshirani1996.qmd) |

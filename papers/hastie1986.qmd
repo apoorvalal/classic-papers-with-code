@@ -1,0 +1,84 @@
+---
+title: "Generalized Additive Models"
+subtitle: "Trevor Hastie and Robert Tibshirani (1986)"
+jupyter: python3
+---
+
+```{python}
+#| label: setup
+#| include: false
+import numpy as np
+import matplotlib.pyplot as plt
+plt.style.use("dark_background")
+rng = np.random.default_rng(319)
+```
+
+## Core Contribution
+
+Generalized additive models replace a purely linear predictor with additive smooth functions:
+
+$$
+g(E[Y\mid X])=\alpha+\sum_{j=1}^p f_j(X_j).
+$$
+
+For squared-error regression, one computational idea is backfitting: cycle through partial residuals and update each smooth $f_j$ while holding the others fixed.
+
+$$
+f_j \leftarrow S_j\left(y-\alpha-\sum_{k\ne j} f_k\right),
+$$
+
+where $S_j$ is a smoother.
+
+## Minimal Implementation
+
+Define a kernel smoother $S_j$.
+
+```{python}
+def smooth(x, y, xgrid, bw=0.18):
+    W = np.exp(-0.5 * ((xgrid[:, None] - x[None, :]) / bw) ** 2)
+    W /= W.sum(axis=1, keepdims=True)
+    return W @ y
+```
+
+Simulate data from an additive regression function.
+
+```{python}
+n = 260
+x1, x2 = rng.uniform(0, 1, (2, n))
+y = np.sin(2 * np.pi * x1) + 1.3 * (x2 - 0.5) ** 2 + rng.normal(0, 0.2, n)
+y[:5]
+```
+
+Backfit by repeatedly smoothing the partial residual for each component.
+
+```{python}
+f1 = np.zeros(n); f2 = np.zeros(n)
+for _ in range(12):
+    f1 = smooth(x1, y - y.mean() - f2, x1); f1 -= f1.mean()
+    f2 = smooth(x2, y - y.mean() - f1, x2); f2 -= f2.mean()
+f1[:5], f2[:5]
+```
+
+Plot the recovered additive functions $f_1$ and $f_2$.
+
+```{python}
+#| fig-cap: "Backfitting recovers additive smooth components from noisy data."
+grid = np.linspace(0, 1, 140)
+g1 = smooth(x1, y - y.mean() - f2, grid); g1 -= g1.mean()
+g2 = smooth(x2, y - y.mean() - f1, grid); g2 -= g2.mean()
+
+fig, ax = plt.subplots(1, 2, figsize=(8, 3.3))
+ax[0].plot(grid, np.sin(2*np.pi*grid), label="truth")
+ax[0].plot(grid, g1, label="backfit")
+ax[0].set(title="f1(x1)")
+truth2 = 1.3 * (grid - 0.5) ** 2
+ax[1].plot(grid, truth2 - truth2.mean(), label="truth")
+ax[1].plot(grid, g2, label="backfit")
+ax[1].set(title="f2(x2)")
+for a in ax: a.legend()
+plt.show()
+```
+
+## Implementations
+
+[pyGAM](https://pygam.readthedocs.io/), [mgcv](https://cran.r-project.org/package=mgcv), [statsmodels GAM](https://www.statsmodels.org/stable/gam.html)

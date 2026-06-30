@@ -1,0 +1,60 @@
+project:
+  type: website
+  output-dir: _site
+
+website:
+  title: "Statistical Ideas in Code"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Home
+      - text: Papers
+        menu:
+          - href: papers/laird1982.qmd
+            text: Random Effects
+          - href: papers/benjamini1995.qmd
+            text: False Discovery Rate
+          - href: papers/breiman2001.qmd
+            text: Two Cultures
+          - href: papers/efron1979.qmd
+            text: Bootstrap
+          - href: papers/dempster1977.qmd
+            text: EM Algorithm
+          - href: papers/baumwelch.qmd
+            text: Baum-Welch
+          - href: papers/gelfand1990.qmd
+            text: MCMC
+          - href: papers/cox1972.qmd
+            text: Cox Model
+          - href: papers/rosenbaum1983.qmd
+            text: Propensity Scores
+          - href: papers/hastie1986.qmd
+            text: GAM
+          - href: papers/vovk2008.qmd
+            text: Conformal Prediction
+          - href: papers/friedman1999.qmd
+            text: Gradient Boosting
+          - href: papers/robins1999.qmd
+            text: Marginal Structural Models
+          - href: papers/tibshirani1996.qmd
+            text: Lasso
+
+format:
+  html:
+    theme: cyborg
+    toc: true
+    toc-depth: 2
+    code-fold: false
+    code-tools: false
+    self-contained: true
+    embed-resources: true
+    page-layout: full
+    fig-format: svg
+    css: styles.css
+
+execute:
+  echo: true
+  warning: false
+  message: false
+  cache: false
+  freeze: false

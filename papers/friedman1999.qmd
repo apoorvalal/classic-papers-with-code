@@ -1,0 +1,84 @@
+---
+title: "Greedy Function Approximation: A Gradient Boosting Machine"
+subtitle: "Jerome Friedman (1999)"
+jupyter: python3
+---
+
+```{python}
+#| label: setup
+#| include: false
+import numpy as np
+import matplotlib.pyplot as plt
+plt.style.use("dark_background")
+rng = np.random.default_rng(319)
+```
+
+## Core Contribution
+
+Gradient boosting views prediction as optimization in function space:
+
+$$
+\hat f = \arg\min_f \sum_{i=1}^n L(y_i,f(x_i)).
+$$
+
+Starting from $f_0$, each iteration fits a weak learner $h_m$ to the negative gradient
+
+$$
+r_{im}=-\left.\frac{\partial L(y_i,f(x_i))}{\partial f(x_i)}\right|_{f=f_{m-1}},
+$$
+
+then updates $f_m=f_{m-1}+\nu h_m$. For squared loss, the negative gradient is just the residual.
+
+## Minimal Implementation
+
+Define the weak learner $h_m$ as a one-split regression stump.
+
+```{python}
+def stump(x, r):
+    best = None
+    for c in np.quantile(x, np.linspace(0.1, 0.9, 20)):
+        left = x <= c
+        pred = np.where(left, r[left].mean(), r[~left].mean())
+        sse = ((r - pred) ** 2).sum()
+        if best is None or sse < best[0]:
+            best = (sse, c, r[left].mean(), r[~left].mean())
+    return best[1:]
+```
+
+Simulate data and initialize $f_0(x)$ at the empirical mean.
+
+```{python}
+x = np.linspace(-2, 2, 200)
+y = np.cos(3*x) + 0.35*x + rng.normal(0, 0.2, len(x))
+f = np.repeat(y.mean(), len(y))
+f[:5]
+```
+
+For squared loss, the negative gradient is $y-f_{m-1}(x)$; fit $h_m$ to it and update $f_m=f_{m-1}+\nu h_m$.
+
+```{python}
+curves = [f.copy()]
+for m in range(60):
+    c, a, b = stump(x, y - f)
+    f += 0.12 * np.where(x <= c, a, b)
+    if m in [2, 9, 59]:
+        curves.append(f.copy())
+f[:5]
+```
+
+Plot the stagewise function estimates.
+
+```{python}
+#| fig-cap: "For squared-error boosting, each weak learner fits the current residuals."
+fig, ax = plt.subplots(figsize=(6, 3.5))
+ax.scatter(x, y, s=12, alpha=0.35)
+for label, curve in zip(["initial", "3 trees", "10 trees", "60 trees"], curves):
+    ax.plot(x, curve, lw=2, label=label)
+ax.set(title="Stagewise additive fitting", xlabel="x", ylabel="y")
+ax.legend()
+plt.show()
+```
+
+## Implementations
+
+[scikit-learn GradientBoostingRegressor](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.GradientBoostingRegressor.html), [XGBoost](https://xgboost.readthedocs.io/), [LightGBM](https://lightgbm.readthedocs.io/), [CatBoost](https://catboost.ai/)

@@ -1,0 +1,101 @@
+---
+title: "Random-Effects Models for Longitudinal Data"
+subtitle: "Nan Laird (1982)"
+jupyter: python3
+---
+
+```{python}
+#| label: setup
+#| include: false
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import linalg, optimize
+plt.style.use("dark_background")
+rng = np.random.default_rng(319)
+```
+
+## Core Contribution
+
+Laird's contribution was to make longitudinal dependence a modeling target rather than a nuisance. Repeated observations on the same unit are correlated because they share latent subject-level effects. A simple random-intercept version is
+
+$$
+y_{it}=x_{it}'\beta + u_i + \varepsilon_{it},
+\qquad
+u_i \sim N(0,\sigma_u^2),\quad
+\varepsilon_{it}\sim N(0,\sigma_\varepsilon^2).
+$$
+
+Stacking observations gives $y\sim N(X\beta,V)$ with
+
+$$
+V = \sigma_u^2 Z Z' + \sigma_\varepsilon^2 I.
+$$
+
+Conditional on variance components, $\beta$ is generalized least squares:
+
+$$
+\hat\beta = (X'V^{-1}X)^{-1}X'V^{-1}y.
+$$
+
+## Minimal Implementation
+
+Simulate repeated observations and build the fixed-effect design $X$ and subject-incidence matrix $Z$.
+
+```{python}
+n_subjects, t = 18, 5
+x = np.tile(np.linspace(0, 1, t), n_subjects)
+ids = np.repeat(np.arange(n_subjects), t)
+u = rng.normal(0, 0.8, n_subjects)
+y = 1 + 1.4 * x + u[ids] + rng.normal(0, 0.35, len(x))
+X = np.c_[np.ones_like(x), x]
+Z = np.zeros((len(y), n_subjects))
+Z[np.arange(len(y)), ids] = 1
+X.shape, Z.shape
+```
+
+Define $V(\sigma_u,\sigma_\varepsilon)$ and estimate the two variance components by profiling out $\beta$.
+
+```{python}
+def nll(theta):
+    su, se = np.exp(theta)
+    V = su**2 * (Z @ Z.T) + se**2 * np.eye(len(y))
+    c, low = linalg.cho_factor(V)
+    Vinv = lambda a: linalg.cho_solve((c, low), a)
+    beta = linalg.solve(X.T @ Vinv(X), X.T @ Vinv(y))
+    r = y - X @ beta
+    return 0.5 * (2 * np.log(np.diag(c)).sum() + r @ Vinv(r))
+
+su, se = np.exp(optimize.minimize(nll, np.log([0.6, 0.4])).x)
+su, se
+```
+
+Given $V$, compute the GLS estimate $\hat\beta$ and empirical Bayes random intercepts $\hat u$.
+
+```{python}
+V = su**2 * (Z @ Z.T) + se**2 * np.eye(len(y))
+c, low = linalg.cho_factor(V)
+Vinv = lambda a: linalg.cho_solve((c, low), a)
+beta = linalg.solve(X.T @ Vinv(X), X.T @ Vinv(y))
+u_hat = su**2 * Z.T @ Vinv(y - X @ beta)
+beta[:], u_hat[:5]
+```
+
+Plot the population trend and subject-specific fitted trajectories.
+
+```{python}
+#| fig-cap: "Estimated subject intercepts separate individual trajectories from the population trend."
+xx = np.linspace(0, 1, 60)
+fig, ax = plt.subplots(figsize=(6, 3.5))
+for i in range(n_subjects):
+    m = ids == i
+    ax.plot(x[m], y[m], "o", alpha=0.35)
+    ax.plot(xx, beta[0] + u_hat[i] + beta[1] * xx, alpha=0.28)
+ax.plot(xx, beta[0] + beta[1] * xx, lw=3, color="#ffcc66", label="population")
+ax.set(title=f"sd(subject)={su:.2f}, sd(error)={se:.2f}", xlabel="time", ylabel="outcome")
+ax.legend()
+plt.show()
+```
+
+## Implementations
+
+[statsmodels MixedLM](https://www.statsmodels.org/stable/mixed_linear.html), [lme4](https://cran.r-project.org/package=lme4), [MixedModels.jl](https://juliastats.org/MixedModels.jl/stable/)

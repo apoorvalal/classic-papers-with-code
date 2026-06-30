@@ -1,0 +1,82 @@
+---
+title: "Regression Models and Life-Tables"
+subtitle: "David Cox (1972)"
+jupyter: python3
+---
+
+```{python}
+#| label: setup
+#| include: false
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import optimize, special
+plt.style.use("dark_background")
+rng = np.random.default_rng(319)
+```
+
+## Core Contribution
+
+Cox introduced a survival regression model with unspecified baseline hazard:
+
+$$
+h(t\mid x)=h_0(t)\exp(x'\beta).
+$$
+
+The baseline $h_0(t)$ can be left unspecified because the ordered failure times imply a partial likelihood:
+
+$$
+L(\beta)=\prod_{i:\delta_i=1}
+\frac{\exp(x_i'\beta)}{\sum_{j:t_j\ge t_i}\exp(x_j'\beta)}.
+$$
+
+This estimates relative hazards while avoiding a full parametric survival distribution.
+
+## Minimal Implementation
+
+Simulate observed event/censoring times and the risk sets induced by their ordering.
+
+```{python}
+n = 180
+x = rng.normal(size=n)
+beta_true = 0.8
+t_event = rng.exponential(scale=np.exp(-beta_true * x))
+t_cens = rng.exponential(scale=2.1, size=n)
+time = np.minimum(t_event, t_cens)
+event = t_event <= t_cens
+event.mean()
+```
+
+Define the negative partial log-likelihood using the risk set $R(t_i)=\{j:t_j\ge t_i\}$.
+
+```{python}
+def neg_pl(beta):
+    xb = beta * x
+    out = 0.0
+    for ti, xi, di in zip(time, x, event):
+        if di:
+            out += beta * xi - special.logsumexp(xb[time >= ti])
+    return -out
+
+beta_hat = optimize.minimize_scalar(neg_pl, bracket=(-1, 1)).x
+beta_hat
+```
+
+Evaluate and plot the profile of the partial likelihood.
+
+```{python}
+#| fig-cap: "The partial likelihood recovers a log hazard ratio without estimating the baseline hazard."
+grid = np.linspace(-0.2, 1.6, 180)
+pll = np.array([-neg_pl(b) for b in grid])
+
+fig, ax = plt.subplots(figsize=(6, 3.4))
+ax.plot(grid, pll - pll.max())
+ax.axvline(beta_hat, color="#ffcc66", lw=2.5, label=f"partial MLE={beta_hat:.2f}")
+ax.axvline(beta_true, color="#66ff99", ls="--", label=f"truth={beta_true:.2f}")
+ax.set(xlabel="log hazard ratio", ylabel="relative log partial likelihood")
+ax.legend()
+plt.show()
+```
+
+## Implementations
+
+[lifelines CoxPHFitter](https://lifelines.readthedocs.io/en/latest/fitters/regression/CoxPHFitter.html), [scikit-survival CoxPHSurvivalAnalysis](https://scikit-survival.readthedocs.io/en/stable/api/generated/sksurv.linear_model.CoxPHSurvivalAnalysis.html), [R survival](https://cran.r-project.org/package=survival)

@@ -1,0 +1,67 @@
+---
+title: "Bootstrap Methods: Another Look at the Jackknife"
+subtitle: "Bradley Efron (1979)"
+jupyter: python3
+---
+
+```{python}
+#| label: setup
+#| include: false
+import numpy as np
+import matplotlib.pyplot as plt
+plt.style.use("dark_background")
+rng = np.random.default_rng(319)
+```
+
+## Core Contribution
+
+The bootstrap replaces unknown population sampling with the empirical distribution $\hat F_n$. For a statistic $T=T(X_1,\ldots,X_n)$, draw
+
+$$
+X_1^*,\ldots,X_n^* \stackrel{iid}{\sim} \hat F_n
+$$
+
+and approximate the sampling distribution of $T$ by the conditional distribution of
+
+$$
+T^* = T(X_1^*,\ldots,X_n^*)\mid X_1,\ldots,X_n.
+$$
+
+This turns many standard-error and confidence-interval problems into simulation problems.
+
+## Minimal Implementation
+
+Treat the observed array as the empirical distribution $\hat F_n$.
+
+```{python}
+x = rng.lognormal(mean=0, sigma=0.8, size=70)
+T = np.median
+T(x)
+```
+
+Draw $X_1^*,\ldots,X_n^* \sim \hat F_n$ and compute $T^*$ many times.
+
+```{python}
+B = 2000
+boot = np.array([T(rng.choice(x, size=len(x), replace=True)) for _ in range(B)])
+ci = np.quantile(boot, [0.025, 0.975])
+ci
+```
+
+Plot the conditional bootstrap distribution of $T^*$.
+
+```{python}
+#| fig-cap: "Bootstrap resampling approximates the sampling distribution of a statistic."
+fig, ax = plt.subplots(figsize=(6, 3.5))
+ax.hist(boot, bins=36, alpha=0.75, color="#45b3e7")
+ax.axvline(np.median(x), color="#ffcc66", lw=2.5, label="sample median")
+ax.axvline(ci[0], color="#66ff99", ls="--")
+ax.axvline(ci[1], color="#66ff99", ls="--", label="95% percentile CI")
+ax.set(title=f"CI=({ci[0]:.2f}, {ci[1]:.2f})", xlabel="bootstrap median")
+ax.legend()
+plt.show()
+```
+
+## Implementations
+
+[scipy.stats.bootstrap](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.bootstrap.html), [R boot](https://cran.r-project.org/package=boot), [arch.bootstrap](https://arch.readthedocs.io/en/latest/bootstrap/bootstrap.html)

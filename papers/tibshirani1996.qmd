@@ -1,0 +1,96 @@
+---
+title: "Regression Shrinkage and Selection via the Lasso"
+subtitle: "Robert Tibshirani (1996)"
+jupyter: python3
+---
+
+```{python}
+#| label: setup
+#| include: false
+import numpy as np
+import matplotlib.pyplot as plt
+import sympy as sp
+plt.style.use("dark_background")
+rng = np.random.default_rng(319)
+```
+
+## Core Contribution
+
+The lasso solves penalized least squares with an $\ell_1$ constraint or penalty:
+
+$$
+\hat\beta
+= \arg\min_\beta
+\frac{1}{2n}\|y-X\beta\|_2^2+\lambda\|\beta\|_1.
+$$
+
+The geometry of the $\ell_1$ ball creates corners, so coefficient paths can hit exactly zero. In one coordinate, the update is soft-thresholding:
+
+$$
+\beta_j \leftarrow
+\frac{S\left(n^{-1}x_j'(y-X_{-j}\beta_{-j}),\lambda\right)}
+{n^{-1}x_j'x_j},
+\qquad
+S(z,\lambda)=\operatorname{sign}(z)(|z|-\lambda)_+.
+$$
+
+```{python}
+#| output: asis
+z, lam = sp.symbols("z lambda", positive=True)
+print("SymPy expression for positive-side soft-thresholding:")
+print(f"$S(z,\\lambda)= {sp.latex(z-lam)}$ when $z>\\lambda$, and $0$ otherwise.")
+```
+
+## Minimal Implementation
+
+Define the soft-thresholding map $S(z,\lambda)=\operatorname{sign}(z)(|z|-\lambda)_+$.
+
+```{python}
+def soft(z, lam):
+    return np.sign(z) * np.maximum(np.abs(z) - lam, 0)
+
+soft(np.array([-1.2, -0.2, 0.7]), lam=0.5)
+```
+
+Simulate $(y,X)$ for a sparse linear model.
+
+```{python}
+n, p = 90, 28
+X = rng.normal(size=(n, p))
+X = (X - X.mean(axis=0)) / X.std(axis=0)
+beta_true = np.zeros(p)
+beta_true[[1, 4, 8, 15]] = [2.0, -1.4, 1.1, -1.8]
+y = X @ beta_true + rng.normal(0, 0.8, n)
+y -= y.mean()
+beta_true
+```
+
+For each coordinate, form the partial residual $r_j=y-X\beta+x_j\beta_j$ and apply the update.
+
+```{python}
+lam_grid = np.linspace(1.8, 0.02, 55)
+b = np.zeros(p); path = []
+for lam in lam_grid:
+    for _ in range(100):
+        for j in range(p):
+            r = y - X @ b + X[:, j] * b[j]
+            b[j] = soft(X[:, j] @ r / n, lam) / (X[:, j] @ X[:, j] / n)
+    path.append(b.copy())
+path = np.array(path)
+path[-1, :10]
+```
+
+Plot the path $\hat\beta(\lambda)$.
+
+```{python}
+#| fig-cap: "Coordinate descent soft-thresholding gives sparse coefficient paths."
+fig, ax = plt.subplots(figsize=(6, 3.5))
+ax.plot(lam_grid, path)
+ax.invert_xaxis()
+ax.set(title="Lasso coefficient path", xlabel="lambda", ylabel="coefficient")
+plt.show()
+```
+
+## Implementations
+
+[scikit-learn Lasso](https://scikit-learn.org/stable/modules/generated/sklearn.linear_model.Lasso.html), [glmnet](https://glmnet.stanford.edu/), [skglm](https://contrib.scikit-learn.org/skglm/)

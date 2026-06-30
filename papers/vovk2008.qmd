@@ -1,0 +1,78 @@
+---
+title: "A Tutorial on Conformal Prediction"
+subtitle: "Glenn Shafer and Vladimir Vovk (2008)"
+jupyter: python3
+---
+
+```{python}
+#| label: setup
+#| include: false
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import linalg
+plt.style.use("dark_background")
+rng = np.random.default_rng(319)
+```
+
+## Core Contribution
+
+Conformal prediction turns a point predictor into a prediction set with finite-sample coverage under exchangeability. In split conformal regression, fit $\hat f$ on training data and compute calibration residuals
+
+$$
+r_i = |Y_i-\hat f(X_i)|.
+$$
+
+Let $\hat q$ be the appropriate $(1-\alpha)$ empirical quantile of the residuals. The prediction interval is
+
+$$
+C(x)=\left[\hat f(x)-\hat q,\;\hat f(x)+\hat q\right],
+$$
+
+with marginal coverage at least $1-\alpha$.
+
+## Minimal Implementation
+
+Split data into training and calibration sets, then fit the point predictor $\hat f$ on training data.
+
+```{python}
+n = 240
+x = rng.uniform(-2, 2, n)
+y = x + 0.6 * x**2 + rng.normal(0, 0.35 + 0.2 * np.abs(x), n)
+idx = rng.permutation(n)
+train, cal = idx[:120], idx[120:180]
+Phi = lambda z: np.c_[np.ones_like(z), z, z**2]
+b = linalg.lstsq(Phi(x[train]), y[train])[0]
+b
+```
+
+Compute calibration nonconformity scores $r_i=|Y_i-\hat f(X_i)|$ and their conformal quantile $\hat q$.
+
+```{python}
+resid = np.abs(y[cal] - Phi(x[cal]) @ b)
+q = np.quantile(resid, np.ceil((len(cal) + 1) * 0.9) / len(cal), method="higher")
+q
+```
+
+Evaluate the prediction set $C(x)=[\hat f(x)-\hat q,\hat f(x)+\hat q]$ on a grid.
+
+```{python}
+grid = np.linspace(-2, 2, 180)
+pred = Phi(grid) @ b
+lower, upper = pred - q, pred + q
+```
+
+Plot the fitted curve and calibrated band.
+
+```{python}
+#| fig-cap: "Split conformal prediction wraps a fitted curve in a calibrated residual band."
+fig, ax = plt.subplots(figsize=(6, 3.5))
+ax.scatter(x, y, s=13, alpha=0.35)
+ax.plot(grid, pred, color="#ffcc66", lw=2.5)
+ax.fill_between(grid, lower, upper, color="#45b3e7", alpha=0.28)
+ax.set(title=f"90% split conformal band, q={q:.2f}", xlabel="x", ylabel="y")
+plt.show()
+```
+
+## Implementations
+
+[MAPIE](https://mapie.readthedocs.io/), [nonconformist](https://github.com/donlnz/nonconformist), [crepes](https://github.com/henrikbostrom/crepes)

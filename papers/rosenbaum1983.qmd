@@ -1,0 +1,102 @@
+---
+title: "The Central Role of the Propensity Score"
+subtitle: "Paul Rosenbaum and Donald Rubin (1983)"
+jupyter: python3
+---
+
+```{python}
+#| label: setup
+#| include: false
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import optimize, special
+plt.style.use("dark_background")
+rng = np.random.default_rng(319)
+```
+
+## Core Contribution
+
+The propensity score is the treatment probability
+
+$$
+e(x)=\Pr(D=1\mid X=x).
+$$
+
+Rosenbaum and Rubin showed that if treatment is ignorable given covariates,
+
+$$
+(Y(1),Y(0))\perp D\mid X,
+$$
+
+then it is also ignorable given the scalar propensity score:
+
+$$
+(Y(1),Y(0))\perp D\mid e(X).
+$$
+
+This turns a high-dimensional balancing problem into a one-dimensional balancing problem.
+
+## Minimal Implementation
+
+Simulate treatment assignment from the propensity score $e(X)=\Pr(D=1\mid X)$.
+
+```{python}
+n = 700
+x1, x2 = rng.normal(size=(2, n))
+e = special.expit(-0.2 + 1.0 * x1 - 0.8 * x2)
+d = rng.binomial(1, e)
+tau = 1.4
+y = tau * d + 1.2 * x1 + 0.7 * x2 + rng.normal(size=n)
+X = np.c_[np.ones(n), x1, x2]
+d.mean()
+```
+
+Estimate $\hat e(X)$ by logistic regression.
+
+```{python}
+def nll(b):
+    xb = X @ b
+    return -np.sum(d * xb - np.logaddexp(0, xb))
+
+b = optimize.minimize(nll, np.zeros(3)).x
+ehat = special.expit(X @ b)
+ehat[:5]
+```
+
+Use inverse-propensity weights to estimate the ATE and check covariate balance.
+
+```{python}
+w = d / ehat + (1 - d) / (1 - ehat)
+ate_ipw = np.mean(d * y / ehat - (1 - d) * y / (1 - ehat))
+
+def smd(v, weights=None):
+    if weights is None:
+        mt, mc = v[d == 1].mean(), v[d == 0].mean()
+    else:
+        mt = np.average(v[d == 1], weights=weights[d == 1])
+        mc = np.average(v[d == 0], weights=weights[d == 0])
+    return (mt - mc) / v.std()
+
+before = [smd(x1), smd(x2)]
+after = [smd(x1, w), smd(x2, w)]
+ate_ipw, before, after
+```
+
+Plot standardized mean differences before and after weighting.
+
+```{python}
+#| fig-cap: "Inverse propensity weighting reduces covariate imbalance."
+fig, ax = plt.subplots(figsize=(6, 3.4))
+loc = np.arange(2)
+ax.bar(loc - 0.18, before, width=0.35, label="raw")
+ax.bar(loc + 0.18, after, width=0.35, label="IPW")
+ax.axhline(0, color="white", lw=0.8)
+ax.set(xticks=loc, xticklabels=["x1", "x2"], ylabel="standardized mean difference",
+       title=f"IPW ATE={ate_ipw:.2f}, truth={tau:.2f}")
+ax.legend()
+plt.show()
+```
+
+## Implementations
+
+[DoWhy](https://www.pywhy.org/dowhy/), [EconML](https://econml.azurewebsites.net/), [MatchIt](https://cran.r-project.org/package=MatchIt), [WeightIt](https://cran.r-project.org/package=WeightIt)

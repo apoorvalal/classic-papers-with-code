@@ -1,0 +1,84 @@
+---
+title: "Statistical Modeling: The Two Cultures"
+subtitle: "Leo Breiman (2001)"
+jupyter: python3
+---
+
+```{python}
+#| label: setup
+#| include: false
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import linalg
+plt.style.use("dark_background")
+rng = np.random.default_rng(319)
+```
+
+## Core Contribution
+
+Breiman framed a methodological split. The data-modeling culture assumes a stochastic data-generating form such as
+
+$$
+y = x'\beta+\varepsilon
+$$
+
+and emphasizes interpretable parameters. The algorithmic-modeling culture treats the mechanism as mostly unknown and estimates a prediction rule
+
+$$
+\hat f = \arg\min_{f\in\mathcal F}\sum_i L(y_i,f(x_i)),
+$$
+
+where $\mathcal F$ may be trees, forests, boosting machines, or other flexible algorithms. The core warning is that a clean parametric story can be predictively poor when the response surface is nonlinear.
+
+## Minimal Implementation
+
+Define a one-split regression stump $h_m$ as a simple algorithmic weak learner.
+
+```{python}
+def stump(x, r):
+    best = None
+    for c in np.quantile(x, np.linspace(0.1, 0.9, 20)):
+        left = x <= c
+        pred = np.where(left, r[left].mean(), r[~left].mean())
+        sse = ((r - pred) ** 2).sum()
+        if best is None or sse < best[0]:
+            best = (sse, c, r[left].mean(), r[~left].mean())
+    return best[1:]
+```
+
+Simulate a nonlinear regression surface and fit the explicit linear model $X\hat\beta$.
+
+```{python}
+x = np.linspace(0, 1, 180)
+y = np.sin(2 * np.pi * x) + 0.35 * (x > 0.55) + rng.normal(0, 0.15, len(x))
+X = np.c_[np.ones_like(x), x]
+linear = X @ linalg.lstsq(X, y)[0]
+linear[:5]
+```
+
+Build an algorithmic prediction rule $f$ by stagewise stump updates.
+
+```{python}
+f = np.repeat(y.mean(), len(y))
+for _ in range(40):
+    c, a, b = stump(x, y - f)
+    f += 0.18 * np.where(x <= c, a, b)
+f[:5]
+```
+
+Plot the data-modeling line against the algorithmic ensemble.
+
+```{python}
+#| fig-cap: "A linear model is interpretable but misses structure; a small hand-built stump ensemble tracks it."
+fig, ax = plt.subplots(figsize=(6, 3.5))
+ax.scatter(x, y, s=13, alpha=0.4)
+ax.plot(x, linear, lw=2.5, label="data-modeling line")
+ax.plot(x, f, lw=2.5, label="algorithmic ensemble")
+ax.set(title="The two cultures in miniature", xlabel="x", ylabel="y")
+ax.legend()
+plt.show()
+```
+
+## Implementations
+
+[scikit-learn RandomForestRegressor](https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestRegressor.html), [ranger](https://cran.r-project.org/package=ranger), [XGBoost](https://xgboost.readthedocs.io/)

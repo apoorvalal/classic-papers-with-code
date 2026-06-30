@@ -1,0 +1,73 @@
+---
+title: "Sampling-Based Approaches to Calculating Marginal Densities"
+subtitle: "Alan Gelfand and Adrian Smith (1990)"
+jupyter: python3
+---
+
+```{python}
+#| label: setup
+#| include: false
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy import stats
+plt.style.use("dark_background")
+rng = np.random.default_rng(319)
+```
+
+## Core Contribution
+
+Bayesian inference often needs marginal posterior quantities
+
+$$
+p(\theta_j\mid y)=\int p(\theta\mid y)\,d\theta_{-j},
+$$
+
+which can be analytically intractable. Gelfand and Smith helped make simulation-based posterior calculation routine: construct a Markov chain with stationary density $p(\theta\mid y)$ and estimate posterior expectations by
+
+$$
+E[g(\theta)\mid y]\approx \frac{1}{M}\sum_{m=1}^M g(\theta^{(m)}).
+$$
+
+## Minimal Implementation
+
+Define the posterior density $p(\theta\mid y)$ up to an additive constant.
+
+```{python}
+data = rng.normal(1.1, 1.0, 40)
+def logpost(theta):
+    return stats.norm.logpdf(theta, 0, 3) + stats.norm.logpdf(data, theta, 1).sum()
+
+logpost(0.0)
+```
+
+Generate a Markov chain $\theta^{(m)}$ with a random-walk Metropolis step.
+
+```{python}
+draws = np.zeros(5000)
+theta = 0.0; accept = 0
+for i in range(len(draws)):
+    prop = theta + rng.normal(0, 0.35)
+    if np.log(rng.uniform()) < logpost(prop) - logpost(theta):
+        theta = prop; accept += 1
+    draws[i] = theta
+post = draws[800:]
+post.mean(), post.std()
+```
+
+Plot the chain and the posterior marginal estimated from simulation.
+
+```{python}
+#| fig-cap: "A random-walk Metropolis chain estimates the posterior marginal for a normal mean."
+fig, ax = plt.subplots(1, 2, figsize=(8, 3.3))
+ax[0].plot(draws[:900], lw=0.8)
+ax[0].set(title=f"trace, accept={accept/len(draws):.2f}")
+ax[1].hist(post, bins=40, density=True, alpha=0.65)
+grid = np.linspace(post.min() - 0.3, post.max() + 0.3, 200)
+ax[1].plot(grid, stats.gaussian_kde(post)(grid), color="#ffcc66", lw=2.3)
+ax[1].set(title="posterior marginal")
+plt.show()
+```
+
+## Implementations
+
+[PyMC](https://www.pymc.io/), [Stan](https://mc-stan.org/), [TensorFlow Probability](https://www.tensorflow.org/probability), [Turing.jl](https://turinglang.org/)
