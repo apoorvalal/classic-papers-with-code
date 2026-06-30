@@ -1,6 +1,9 @@
 project:
   type: website
   output-dir: _site
+  render:
+    - index.qmd
+    - papers/*.qmd
 
 website:
   title: "Statistical Ideas in Code"
